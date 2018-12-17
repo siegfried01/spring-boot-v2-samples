@@ -1,3 +1,47 @@
+//
+//  Begin commands to execute this file using gradle with bash
+//  ./gradlew test
+//  End commands to execute this file using gradle with bash
+//
+// Show Tests Part 1 https://stackoverflow.com/questions/3963708/gradle-how-to-display-test-results-in-the-console-in-real-time
+import org.gradle.api.tasks.testing.logging.TestExceptionFormat
+import org.gradle.api.tasks.testing.logging.TestLogEvent
+
+tasks.withType(Test) {
+    testLogging {
+        // set options for log level LIFECYCLE
+        events TestLogEvent.FAILED,
+               TestLogEvent.PASSED,
+               TestLogEvent.SKIPPED,
+               TestLogEvent.STANDARD_OUT
+        exceptionFormat TestExceptionFormat.FULL
+        showExceptions true
+        showCauses true
+        showStackTraces true
+
+        // set options for log level DEBUG and INFO
+        debug {
+            events TestLogEvent.STARTED,
+                   TestLogEvent.FAILED,
+                   TestLogEvent.PASSED,
+                   TestLogEvent.SKIPPED,
+                   TestLogEvent.STANDARD_ERROR,
+                   TestLogEvent.STANDARD_OUT
+            exceptionFormat TestExceptionFormat.FULL
+        }
+        info.events = debug.events
+        info.exceptionFormat = debug.exceptionFormat
+
+        afterSuite { desc, result ->
+            if (!desc.parent) { // will match the outermost suite
+                def output = "Results: ${result.resultType} (${result.testCount} tests, ${result.successfulTestCount} successes, ${result.failedTestCount} failures, ${result.skippedTestCount} skipped)"
+                def startItem = '|  ', endItem = '  |'
+                def repeatLength = startItem.length() + output.length() + endItem.length()
+                println('\n' + ('-' * repeatLength) + '\n' + startItem + output + endItem + '\n' + ('-' * repeatLength))
+            }
+        }
+    }
+}
 buildscript {
 	ext {
 		springBootVersion = '2.1.1.RELEASE'
@@ -27,6 +71,44 @@ repositories {
 dependencies {
 	implementation('org.springframework.boot:spring-boot-starter-web')
 	implementation('org.codehaus.groovy:groovy')
-	compileOnly('org.projectlombok:lombok')
+        implementation('org.apache.httpcomponents:httpclient')
+        implementation('org.springframework.boot:spring-boot-starter-test')
+	implementation('org.projectlombok:lombok')
 	testImplementation('org.springframework.boot:spring-boot-starter-test')
 }
+// Show Tests Part 2 https://stackoverflow.com/questions/29427020/how-to-run-gradle-test-when-all-tests-are-up-to-date
+test.outputs.upToDateWhen {false}
+// https://www.tutorialspoint.com/gradle/gradle_testing.htm
+test {
+   // enable TestNG support (default is JUnit)
+   //useTestNG()
+
+   // set a system property for the test JVM(s)
+   systemProperty 'some.prop', 'value'
+
+   // explicitly include or exclude tests
+   //include 'heintze/**'
+   //exclude 'org/boo/**'
+
+   // show standard out and standard error of the test JVM(s) on the console
+   testLogging.showStandardStreams = true
+
+   // set heap size for the test JVM(s)
+   minHeapSize = "128m"
+   maxHeapSize = "512m"
+
+   // set JVM arguments for the test JVM(s)
+   //jvmArgs '-XX:MaxPermSize=256m'
+   
+   // listen to events in the test execution lifecycle
+   beforeTest { descriptor -> logger.lifecycle("Running test: " + descriptor) }
+
+   // https://stackoverflow.com/questions/3963708/gradle-how-to-display-test-results-in-the-console-in-real-time
+   // testLogging { events "passed", "skipped", "failed", "standardOut", "standardError" }
+   
+   // listen to standard out and standard error of the test JVM(s)
+   onOutput { descriptor, event ->
+       // logger.lifecycle ("Test: " + descriptor + " produced standard out/err: " + event.message )
+       }
+}
+
